@@ -1,4 +1,9 @@
+<!-- CHALLENGE WAS TO SERVE UP FROM STATIC MEDIA NOT FROM MEDIA FOLDER.-->
+
+
+
 <!DOCTYPE html>
+{% load media %} <!-- New line -->
 <html>
 	
 	<head>
@@ -8,6 +13,7 @@
 	<body>
 		<h1>Rango says...</h1>
 	About Page! <strong>{{boldmessage}}</strong><br />
-		<a href= "/rango/index">About</a><br />
+		<a href= "/rango/">Home Page</a><br />
+		<img src ="{% media "joke.jpg" %}" alt="Programming Joke" /><!-- New line -->
 	</body>
 </html>	
