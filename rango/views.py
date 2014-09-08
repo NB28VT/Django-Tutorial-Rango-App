@@ -20,14 +20,28 @@ def index(request):
    #The following two lines are new.
    # We loop through each category returned, and create a URL attribute.
    #This attribute stores an encoded URl (e.g. spaces replaced with underscores)
+   #for category in category_list:
+       #category.url = category.name.replace(' ','_')      
+   
+   #use new function
    for category in category_list:
-       category.url = category.name.replace(' ','_')      
+       encode_url(category)
+   
+
    
    
    # Return a rendered response to send to the client.
    # We make use of the shortcut function to make our lives easier.
    # Note that the first parameter is the function we wish to use
    return render_to_response('rango/index.html', context_dict, context)
+ 
+ 
+def encode_url(category):
+    category.url= category.name.replace(' ','_')
+    
+def decode_url(category_name_url):
+    category_name = category_name_url.replace('_',' ') 
+    return category_name
    
    
    
@@ -131,11 +145,19 @@ def category(request, category_name_url):
     #request our context from the request passed to us
     context = RequestContext(request)
        
+       #THIS FUNCTIONALITY WAS REMOVED. SEEE BELOW FOR NEW FUNCTION
        #change underscores in the category name to spaces.
        #URLs don't handle spaces well, so we encode them as underscores
        #We can simply replace them with spaces again to get the name.
        
-    category_name = category_name_url.replace('_', ' ')
+    #category_name = category_name_url.replace('_', ' ')
+     
+    #NEW FUNCTION 
+    category_name = decode_url(category_name_url) 
+     
+     
+     
+     
        
        #create a context dictionary which we can pass to the template rendering engine.
        #We start by containing the name of the category passed by the user.
