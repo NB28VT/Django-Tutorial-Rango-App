@@ -2,8 +2,11 @@ from django.template import RequestContext
 from django.shortcuts import render_to_response
 
 from rango.models import Category, Page
-from rango.forms import CategoryForm, PageForm
+from rango.forms import CategoryForm, PageForm, UserForm, UserProfileForm
 
+from django.contrib.auth import authenticate, login, logout
+from django.http import HttpResponseRedirect, HttpResponse
+from django.contrib.auth.decorators import login_required
 
 def index(request):
    context = RequestContext(request)
@@ -26,14 +29,71 @@ def index(request):
    #use new function
    for category in category_list:
        encode_url(category)
-   
 
-   
-   
+
+
+       
    # Return a rendered response to send to the client.
    # We make use of the shortcut function to make our lives easier.
    # Note that the first parameter is the function we wish to use
    return render_to_response('rango/index.html', context_dict, context)
+
+
+
+   
+def category(request, category_name_url):
+    #request our context from the request passed to us
+    context = RequestContext(request)
+       
+       #THIS FUNCTIONALITY WAS REMOVED. SEEE BELOW FOR NEW FUNCTION
+       #change underscores in the category name to spaces.
+       #URLs don't handle spaces well, so we encode them as underscores
+       #We can simply replace them with spaces again to get the name.
+       
+    #category_name = category_name_url.replace('_', ' ')
+     
+    #NEW FUNCTION 
+    category_name = decode_url(category_name_url) 
+     
+     
+     
+       
+       #create a context dictionary which we can pass to the template rendering engine.
+       #We start by containing the name of the category passed by the user.
+    context_dict = {'category_name': category_name, 'category_name_url': category_name_url} 
+       
+    try:
+           #Can we find a category with the given name?
+           #If we can't, the .get() method raises a DoesNotExist exception.
+           #So the .get() method retruns one model instance or raises an exception
+           category = Category.objects.get(name=category_name)
+           
+           #Retrieve all of the associated pages.
+           #Note that filter returns >= 1 model instance
+           pages = Page.objects.filter(category=category)
+           
+           #Adds our results list to the template context under name pages
+           context_dict['pages']=pages
+           
+           #We'll also add this category object from the database to the context dic
+           #We'll use this in the template to verify that the category exists
+           context_dict['category']= category
+           
+           
+        
+        
+        
+    except Category.DoesNotExist:
+            #We get here if we didn't find the specificied category.
+            #Don't do anything - the template displays the "no category" message for us 
+            pass
+        #Go render the response and return it to the client.
+        
+    return render_to_response ('rango/category.html', context_dict, context)
+        
+   
+   
+
  
  
 def encode_url(category):
@@ -117,17 +177,7 @@ def add_page(request, category_name_url):
         
         
     return render_to_response('rango/add_page.html', 
-        {'category_name_url':category_name_url, 'category_name':category_name, 'form':form}, context)    
-        
-        
-            
-               
-   
-   
-   
-   
-   
-   
+        {'category_name_url':category_name_url, 'category_name':category_name, 'form':form}, context)      
    
     
 def about(request):
@@ -138,61 +188,129 @@ def about(request):
    
 
    
-   
-   
-   
-def category(request, category_name_url):
-    #request our context from the request passed to us
+def register(request):
+    #Like before, get the resquest's context
     context = RequestContext(request)
+    
+    #A boolean value for telling the template whether the registration was successful.
+    #Set to False initially. Code changes value to True when registration happens.
+    registered = False
+    
+    #If it's a HTTP POST we're interested in processing form data.
+    if request.method == 'POST':
+        #Attempt to grab information from the raw form information.
+        #Note that we make use of both the UserForm and UserProfileForm
+        user_form = UserForm(data=request.POST)
+        profile_form = UserProfileForm(data=request.POST)
        
-       #THIS FUNCTIONALITY WAS REMOVED. SEEE BELOW FOR NEW FUNCTION
-       #change underscores in the category name to spaces.
-       #URLs don't handle spaces well, so we encode them as underscores
-       #We can simply replace them with spaces again to get the name.
+        #If the two forms are valid
+        if user_form.is_valid() and profile_form.is_valid():
+                  #Save the users form to the database.
+                  user = user_form.save()
+     
+                  #Now we hash the password with the set_password method
+                  #Once hashed, we can update the user object.
+                  user.set_password(user.password)
+                  user.save()
+     
+                  #Now sort out the UserProfile instance.
+                  #Since we need to set the user attribute ourselves, we set commit to false
+                  #This delays saving the model until we're ready
+                  profile = profile_form.save(commit=False)
+                  profile.user = user
+     
+                  #Did the user provide a profile picture?
+                  #If so, we need to get it from the input form
+                  if 'picture' in request.FILES:
+                      profile.picture = request.FILES['picture']
+         
+                  #Now we save the UserProfile model instance
+                  profile.save()
+     
+                  #Update our variable to the template registration is completed
+                  registered = True
+     
+        #Invalid form or forms - mistakes or something else?
+        # Print problems to the terminal
+        # They'll also be shown to the user.
+
+        else:
+            print user_form.errors, profile_form.errors
        
-    #category_name = category_name_url.replace('_', ' ')
-     
-    #NEW FUNCTION 
-    category_name = decode_url(category_name_url) 
-     
-     
-     
-       
-       #create a context dictionary which we can pass to the template rendering engine.
-       #We start by containing the name of the category passed by the user.
-    context_dict = {'category_name': category_name, 'category_name_url': category_name_url} 
-       
-    try:
-           #Can we find a category with the given name?
-           #If we can't, the .get() method raises a DoesNotExist exception.
-           #So the .get() method retruns one model instance or raises an exception
-           category = Category.objects.get(name=category_name)
-           
-           #Retrieve all of the associated pages.
-           #Note that filter returns >= 1 model instance
-           pages = Page.objects.filter(category=category)
-           
-           #Adds our results list to the template context under name pages
-           context_dict['pages']=pages
-           
-           #We'll also add this category object from the database to the context dic
-           #We'll use this in the template to verify that the category exists
-           context_dict['category']= category
-           
-           
+      
+   
+   
         
+
+    #No a HTTP POST, so we render our form using two ModelForm instances
+    #These forms will be blank, ready for user input
+    else:
+        user_form = UserForm()
+        profile_form = UserProfileForm()
         
+    #Returtn the template depending on the context.
+    return render_to_response(
+        'rango/register.html',
+        {'user_form':user_form, 'profile_form': profile_form, 'registered':registered},
+        context)              
+
         
-    except Category.DoesNotExist:
-            #We get here if we didn't find the specificied category.
-            #Don't do anything - the template displays the "no category" message for us 
-            pass
-        #Go render the response and return it to the client.
+def user_login(request):
+    context = RequestContext(request)
+    
+    if request.method == 'POST':
         
-    return render_to_response ('rango/category.html', context_dict, context)
+        #Gather the username and password provided.
+        #This information is obtained from the login form.
+        username = request.POST['username']
+        password = request.POST['password']
         
+        #Use Django's machinery to attempt to user if the username/password is valid
+        #a user object is returned if it is
+        user = authenticate(username=username, password=password)
         
+        #If we have a user object, the details are correct
+        #If none, no user with matching credentials is found
         
+        if user:
+            #Is the account active? It could have been disabled.
+            if user.is_active:
+                #If user account is valid and active we can log in.
+                #We'll send the user back to the homepage
+                login(request, user)
+                return HttpResponseRedirect('/rango/')
+            else:
+                #An inactive account was used = no logging in
+                return HttpResponse("Your Rango account was disabled")
+                
+        else:
+            #Bad login details were provided. So we can't log in
+            print "Invalid login details {0}, {1}".format(username, password)
+            return HttpResponse("Invalid login details supplied.")
+    #The request is not a HTTP post, so display the login page
+    #This scenario would most likely be a HTTP GET  What?!
+    
+    else:
+        #No context variables to pass to the template. Blank dict object
+        return render_to_response('rango/login.html', {}, context)    
+        
+@login_required
+def restricted(request):
+    return HttpResponse("Since you're logged in, you can see this text")        
+                        
+def user_logout(request):
+    #Since we know the user is logged in, we can just log them out
+    logout(request)
+    
+    #take the user back to the homepage.
+    return HttpResponseRedirect('/rango/')
+                    
+                
+                
+                
+                
+                
+         
 
            
        
