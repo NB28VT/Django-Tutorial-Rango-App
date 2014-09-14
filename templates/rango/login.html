@@ -1,11 +1,9 @@
-<!DOCTYPE html>
-<html>
-	<head>
-		<!-- Is anyone tired of repeatedly entering the head over and over? Yes. -->
-		<title>Rango</title>
-	</head>
-	
-	<body>
+
+{% extends 'rango/base.html' %}
+{% block title %}{{category_name}}{% endblock %}
+
+{% block body_block %}
+		<body>
 		<h1>Login to Rango</h1>
 		
 		<form id="login_form" method="POST" action= "/rango/login/">
@@ -16,5 +14,5 @@
 			<input type="submit" value="submit" />
 		</form>
 		
-	</body>
-</html>			
+		</body>
+{% endblock %}		
