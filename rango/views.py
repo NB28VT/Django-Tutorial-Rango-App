@@ -8,35 +8,82 @@ from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponseRedirect, HttpResponse
 from django.contrib.auth.decorators import login_required
 
+from datetime import datetime
+
 def index(request):
-   context = RequestContext(request)
-   #query database for a list of all categories currently stored
-   #order by number of likes in descending order.
-   #retrieve the top 5 only, or less if less than 5
-   #place the list in our context_dict dictionary which will be
-   #passed to template engine
-   category_list = Category.objects.order_by('-likes')[:5]
-   page_list = Page.objects.order_by('-views')[:5]
-   context_dict = {'categories': category_list, 'pages': page_list}
-   
-   
-   #The following two lines are new.
-   # We loop through each category returned, and create a URL attribute.
-   #This attribute stores an encoded URl (e.g. spaces replaced with underscores)
-   #for category in category_list:
-       #category.url = category.name.replace(' ','_')      
-   
-   #use new function
-   for category in category_list:
-       encode_url(category)
+
+
+
+  context = RequestContext(request)
+  #query database for a list of all categories currently stored
+  #order by number of likes in descending order.
+  #retrieve the top 5 only, or less if less than 5
+  #place the list in our context_dict dictionary which will be
+  #passed to template engine
+  category_list = Category.objects.order_by('-likes')[:5]
+  page_list = Page.objects.order_by('-views')[:5]
+  context_dict = {'categories': category_list, 'pages': page_list}
+
+
+  #The following two lines are new.
+  # We loop through each category returned, and create a URL attribute.
+  #This attribute stores an encoded URl (e.g. spaces replaced with underscores)
+  #for category in category_list:
+     #category.url = category.name.replace(' ','_')      
+
+  #use new function
+  for category in category_list:
+     encode_url(category)
+
+
+
+  # NEW CODE ####
+  # Obtain our Response object early so we can add cookie information.
+  response = render_to_response('rango/index.html', context_dict, context)
+
+  # Get the number of visits to the site.
+  # We use the COOKIES.get() function to obtain the visits cookie.
+  # If the cookie exists, the value returned is casted to an integer.
+  # If the cookie doesn't exist, we default to zero and cast that.
+  visits = int(request.COOKIES.get('visits', '0'))
+
+  # Does the cookie last_visit exist?
+  if 'last_visit' in request.COOKIES:
+      # Yes it does! Get the cookie's value.
+      last_visit = request.COOKIES['last_visit']
+      # Cast the value to a Python date/time object.
+      last_visit_time = datetime.strptime(last_visit[:-7], "%Y-%m-%d %H:%M:%S")
+
+      # If it's been more than a day since the last visit...
+      if (datetime.now() - last_visit_time).days > 0:
+          # ...reassign the value of the cookie to +1 of what it was before...
+          response.set_cookie('visits', visits+1)
+          # ...and update the last visit cookie, too.
+          response.set_cookie('last_visit', datetime.now())
+  else:
+      # Cookie last_visit doesn't exist, so create it to the current date/time.
+      response.set_cookie('last_visit', datetime.now())
+
+  # Return response back to the user, updating any cookies that need changed.
+  return response
+  #### END NEW CODE ####
+
+
+
+
+
+
+
+
+
 
 
 
        
-   # Return a rendered response to send to the client.
-   # We make use of the shortcut function to make our lives easier.
-   # Note that the first parameter is the function we wish to use
-   return render_to_response('rango/index.html', context_dict, context)
+
+
+
+
 
 
 
@@ -189,6 +236,8 @@ def about(request):
 
    
 def register(request):
+
+
     #Like before, get the resquest's context
     context = RequestContext(request)
     
